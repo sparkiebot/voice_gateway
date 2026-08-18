@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+readonly project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly config_dir="/etc/sparkie"
+readonly config_target="${config_dir}/voice-gateway.json"
+readonly env_target="${project_dir}/runtime/secret.env"
+
+if [[ ! -x "${project_dir}/runtime/venv/bin/python" ]]; then
+    echo "Production runtime is missing at ${project_dir}/runtime" >&2
+    exit 1
+fi
+
+sudo install -d -m 0750 -o root -g sparkie "${config_dir}"
+if [[ ! -f "${config_target}" ]]; then
+    sudo install -m 0640 -o root -g sparkie \
+        "${project_dir}/config.example.json" "${config_target}"
+fi
+if [[ ! -f "${env_target}" ]]; then
+    echo "Create runtime/secret.env from config/voice-gateway.env.example before enabling the service" >&2
+    exit 1
+fi
+chmod 0600 "${env_target}"
+
+sudo install -m 0644 "${project_dir}/systemd/voice-gateway.service" \
+    /etc/systemd/system/voice-gateway.service
+sudo systemctl daemon-reload
+sudo systemctl enable voice-gateway.service
+echo "Review ${config_target}, then start voice-gateway.service."

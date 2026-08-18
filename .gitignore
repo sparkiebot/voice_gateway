@@ -1,0 +1,25 @@
+# Runtime-only assets and credentials
+/runtime/
+/.env
+*.env
+!config/voice-gateway.env.example
+
+# Python generated output
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+.venv/
+
+# Local diagnostics and editors
+*.log
+*.tmp
+*.swp
+*~
+.DS_Store

@@ -1,0 +1,26 @@
+[Unit]
+Description=Sparkie host CUDA voice gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=sparkie
+WorkingDirectory=/home/sparkie/sparkie/voice_gateway
+Environment=PYTHONPATH=/home/sparkie/sparkie/voice_gateway
+EnvironmentFile=/home/sparkie/sparkie/voice_gateway/runtime/secret.env
+Environment=LD_LIBRARY_PATH=/home/sparkie/sparkie/voice_gateway/runtime/lib
+ExecStart=/home/sparkie/sparkie/voice_gateway/runtime/venv/bin/python -m voice_gateway.server --config /etc/sparkie/voice-gateway.json
+TimeoutStartSec=90
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/home/sparkie/sparkie/voice_gateway
+
+[Install]
+WantedBy=multi-user.target

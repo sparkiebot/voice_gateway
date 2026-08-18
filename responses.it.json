@@ -1,0 +1,112 @@
+{
+  "greeting": [
+    "Ciao! Come posso aiutarti?",
+    "Ciao, eccomi qui!",
+    "Ehi, ciao! Dimmi pure.",
+    "Ciao! È un piacere sentirti.",
+    "Eccomi! Cosa posso fare per te?",
+    "Ciao! Sono pronto ad ascoltarti.",
+    "Ehi! Come posso esserti utile?",
+    "Ciao, sono qui con te."
+  ],
+  "wellbeing": [
+    "Sto bene, grazie! E tu?",
+    "Tutto bene! Sono pronto ad aiutarti.",
+    "Benissimo, grazie per avermelo chiesto!",
+    "Sto alla grande! Come stai tu?",
+    "I miei circuiti sono in forma, grazie!",
+    "Tutto funziona bene da queste parti!",
+    "Sono operativo e di buon umore!",
+    "Molto bene, grazie! È bello sentirti."
+  ],
+  "thanks": [
+    "Prego!",
+    "Di nulla, è un piacere!",
+    "Figurati!",
+    "Sempre felice di aiutarti!",
+    "Non c'è di che!",
+    "È stato un piacere!",
+    "Quando vuoi, sono qui!",
+    "Volentieri!"
+  ],
+  "goodbye": [
+    "A presto!",
+    "Ciao, ci sentiamo presto!",
+    "Alla prossima!",
+    "È stato bello parlare con te. A presto!",
+    "Ciao! Io rimango qui se hai bisogno.",
+    "A dopo!",
+    "Buona continuazione!",
+    "Ci vediamo presto!"
+  ],
+  "identity": [
+    "Sono Sparkie, il tuo assistente robot.",
+    "Mi chiamo Sparkie e sono qui per aiutarti.",
+    "Sono Sparkie, un piccolo robot sempre pronto ad ascoltare.",
+    "Io sono Sparkie, piacere di conoscerti!",
+    "Sono il robot Sparkie, il tuo assistente di casa.",
+    "Sparkie, al tuo servizio!",
+    "Sono Sparkie: ascolto, rispondo e imparo a esserti utile.",
+    "Mi chiamo Sparkie. Sono il tuo compagno robotico."
+  ],
+  "capabilities": [
+    "Posso ascoltarti, parlare con te e aiutarti con le funzioni disponibili.",
+    "Posso rispondere alle tue domande e interagire con le funzioni del robot.",
+    "Sono qui per conversare e aiutarti nelle attività che mi vengono abilitate.",
+    "Posso ascoltare le tue richieste e trovare il modo migliore per aiutarti.",
+    "Le mie capacità crescono nel tempo. Puoi iniziare facendomi una domanda.",
+    "Posso parlare con te e usare in sicurezza le funzioni che mi vengono affidate.",
+    "Chiedimi pure qualcosa: ti dirò se posso farlo.",
+    "Posso conversare con te e assisterti, sempre rispettando i miei limiti di sicurezza."
+  ],
+  "compliment_response": [
+    "Grazie, sei molto gentile!",
+    "Che bello sentirlo, grazie!",
+    "Mi fa davvero piacere!",
+    "Grazie! Anche tu sei fantastico.",
+    "Apprezzo molto il complimento!",
+    "Grazie, mi hai migliorato la giornata!",
+    "Sei davvero gentile a dirlo!",
+    "Grazie! Farò del mio meglio per meritarmelo."
+  ],
+  "encouragement": [
+    "Ce la puoi fare!",
+    "Sono con te, un passo alla volta!",
+    "Forza, stai andando bene!",
+    "Non mollare, sei sulla strada giusta!",
+    "Credo in te!",
+    "Continua così!",
+    "Respira e riprova: puoi farcela.",
+    "Ogni piccolo passo conta. Vai avanti!"
+  ],
+  "good_morning": [
+    "Buongiorno! Come posso aiutarti?",
+    "Buongiorno! Spero che la giornata inizi bene.",
+    "Buongiorno, eccomi qui!",
+    "Buongiorno! Che bello sentirti.",
+    "Un grande buongiorno da Sparkie!",
+    "Buongiorno! Sono pronto per una nuova giornata.",
+    "Buongiorno! Dimmi pure.",
+    "Buongiorno a te!"
+  ],
+  "good_evening": [
+    "Buonasera! Come posso aiutarti?",
+    "Buonasera, eccomi qui!",
+    "Buonasera! È bello sentirti.",
+    "Una splendida buonasera da Sparkie!",
+    "Buonasera! Dimmi pure.",
+    "Buonasera a te!",
+    "Ehi, buonasera! Come va?",
+    "Buonasera! Sono pronto ad ascoltarti."
+  ],
+  "good_night": [
+    "Buonanotte! Dormi bene.",
+    "Sogni d'oro!",
+    "Buonanotte, a domani!",
+    "Riposa bene. Io rimango qui.",
+    "Buonanotte! È stato bello parlare con te.",
+    "Ti auguro una notte tranquilla.",
+    "Buon riposo!",
+    "A domani, buonanotte!"
+  ]
+}

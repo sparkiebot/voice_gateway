@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voice-gateway"
+version = "0.1.0"
+description = "Bounded host CUDA voice inference gateway for Sparkie"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+voice-gateway = "voice_gateway.server:main"
+
+[tool.setuptools.packages.find]
+include = ["voice_gateway*"]
