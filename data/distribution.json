@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "target_examples": {
+    "local_smalltalk": 72,
+    "stop_motion": 200,
+    "get_robot_status": 200,
+    "get_battery_level": 250,
+    "get_navigation_status": 180,
+    "navigate_to": 900,
+    "list_known_destinations": 150,
+    "set_volume": 450,
+    "get_environment_status": 180,
+    "follow_me": 220,
+    "off_topic": 400
+  },
+  "samples_per_round": 50,
+  "max_rounds_per_class": 12
+}

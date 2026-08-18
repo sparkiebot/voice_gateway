@@ -34,3 +34,19 @@ bin/validate-finetune-dataset data/sparkie-tools.gemini.raw.jsonl data/sparkie-t
 The validator pins the current tool schemas and Italian system facts, requires
 one-or-zero calls, validates arguments, rejects local phrases the gateway would
 not answer, and removes case-insensitive duplicates.
+
+## Quota-driven augmentation
+
+`distribution.json` declares the exact final count for every tool and for
+`off_topic`. Run a dry report first, then augment only the deficits:
+
+```bash
+bin/augment-by-distribution --dry-run
+export GEMINI_API_KEY="..."
+bin/augment-by-distribution
+```
+
+The script starts only from `sparkie-tools.jsonl`, generates one class at a
+time, rejects calls outside that class, validates every row against `tools.json`,
+and fails rather than write a file with missing quota. It writes the result to
+`sparkie-tools.augmented.jsonl`; use that file for the fine-tuning run.

@@ -149,6 +149,10 @@ The validated combined output is `data/sparkie-tools.gemini.jsonl`. Review it
 before training and increase the sample count in batches until the navigation
 argument has thousands of diverse, grounded examples.
 
+For reproducible class balance, prefer `bin/augment-by-distribution`. Its
+`data/distribution.json` declares the exact final number of rows per tool and
+off-topic class; it generates and validates each deficit separately.
+
 ## Needle fine-tuning
 
 Start with the base model: its schema grammar, retrieval (only the best five
