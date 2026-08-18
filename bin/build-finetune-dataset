@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Build a deterministic, reviewed Italian Needle fine-tuning set for Sparkie."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+
+ROOT = Path(__file__).resolve().parent.parent
+SYSTEM_FACTS = "locale: it-IT; assistant: Sparkie"
+sys.path.insert(0, str(ROOT))
+
+from voice_gateway.local_responses import LocalResponseCatalog  # noqa: E402
+from voice_gateway.tool_catalog import ToolCatalog  # noqa: E402
+
+
+LOCATIONS = (
+    "cucina", "salotto", "camera da letto", "bagno", "ingresso", "studio",
+    "tavolo", "divano", "porta", "base di ricarica", "corridoio", "giardino",
+    "sala da pranzo", "garage", "terrazzo", "lavanderia", "cameretta",
+    "ripostiglio", "balcone", "scrivania",
+)
+BATTERY = ("quanta batteria rimane", "quanta batteria hai", "qual è il livello della batteria", "dimmi la batteria", "controlla la batteria", "mi dici quanta carica resta", "quanta carica è rimasta", "hai poca batteria", "la batteria è scarica", "batteria residua", "stato della batteria", "quanto sei carico", "verifica la carica", "leggimi il livello di carica", "qual è la carica residua", "quanta energia ti resta", "sei quasi scarico", "devi ricaricarti", "quanta autonomia hai", "verifica l'autonomia", "quanto dura ancora la batteria", "batteria del robot", "hai bisogno della base di ricarica", "qual è il tuo stato di carica")
+SIMPLE_TOOLS = {
+    "stop_motion": ("fermati", "stop", "stop subito", "basta", "basta muoverti", "non muoverti", "arresta il movimento", "ferma il robot", "blocca il movimento", "fermati immediatamente", "stop movimento", "ferma tutto"),
+    "get_robot_status": ("dammi il tuo stato", "qual è il tuo stato", "controlla il tuo stato", "stato del robot", "sei operativo", "tutto funziona", "fammi un controllo generale", "diagnostica del robot", "sei connesso", "controlla i sensori", "hai qualche problema", "stato generale"),
+    "get_navigation_status": ("dove stai andando", "sei arrivato", "a che punto sei", "come va la navigazione", "stato della navigazione", "qual è la destinazione", "sei bloccato", "quanto manca ad arrivare", "hai raggiunto la meta", "navigazione in corso", "controlla il percorso", "quando arrivi"),
+    "list_known_destinations": ("dove puoi andare", "quali stanze conosci", "elenca le destinazioni", "quali luoghi sono disponibili", "dove mi puoi portare", "mostrami le destinazioni", "che stanze puoi raggiungere", "quali posti conosci", "dimmi i luoghi sicuri", "quali mete hai", "dove sei autorizzato ad andare", "dove posso mandarti"),
+    "get_environment_status": ("che temperatura c'è", "qual è la temperatura", "dimmi l'umidità", "come è l'ambiente", "ci sono ostacoli", "controlla l'ambiente", "che cosa rilevano i sensori", "misura la temperatura", "qual è lo stato della stanza", "controlla gli ostacoli", "dammi i dati ambientali", "ambiente circostante"),
+    "follow_me": ("seguimi", "vieni con me", "seguimi per favore", "cammina dietro di me", "resta con me", "puoi seguirmi", "vieni dietro di me", "seguimi nella stanza", "accompagnami", "muoviti con me", "seguimi adesso", "stammi dietro"),
+}
+VOLUME = (("metti il volume a 0", 0), ("silenzia la tua voce", 0), ("volume al 10", 10), ("abbassa il volume al 20", 20), ("volume a 25", 25), ("parla più piano al 30", 30), ("metti il volume al 40", 40), ("volume a metà", 50), ("imposta il volume a 50", 50), ("alza il volume al 60", 60), ("volume a 65", 65), ("parla più forte al 70", 70), ("metti il volume al 75", 75), ("volume a 80", 80), ("parla forte al 85", 85), ("alza il volume a 90", 90), ("volume al massimo 100", 100), ("metti il volume a cento", 100), ("voce al 35", 35), ("volume 95", 95))
+OFF_TOPIC = ("raccontami una barzelletta", "che tempo fa domani", "chi ha vinto la partita", "scrivi una poesia", "metti della musica", "manda un messaggio a Luca", "prenota un ristorante", "che ore sono a Tokyo", "fammi un disegno", "traduci questa frase in inglese", "quanti abitanti ha Roma", "accendi la luce", "spegni il forno", "ordina una pizza", "chiama mia madre", "apri la porta", "imposta una sveglia", "ricordami di comprare il pane", "cerca una ricetta", "dammi le ultime notizie", "quanto costa un biglietto del treno", "leggi le email", "invia una foto", "dimmi dove si trova Milano", "fai una telefonata", "controlla il calendario", "scrivi una lista della spesa", "che film mi consigli", "abbassa il riscaldamento", "trova le mie chiavi", "spiegami la relatività", "fammi compagnia", "che giorno è oggi", "apri YouTube", "metti un timer", "connettiti al Wi-Fi", "dimmi una curiosità", "chi è il presidente della Francia", "prepara il caffè", "lavami i piatti", "esci di casa", "chiudi le tende", "trova un taxi", "scrivi un'email", "controlla il traffico")
+
+
+def example(query: str, answers: list[dict[str, object]], reasoning: str,
+            tools: list[dict[str, object]]) -> dict[str, object]:
+    return {"query": query, "system": SYSTEM_FACTS, "tools": tools, "answers": answers,
+            "reasoning": reasoning}
+
+
+def main() -> int:
+    responses = LocalResponseCatalog(ROOT / "responses.it.json")
+    catalogue = ToolCatalog(ROOT / "tools.json", responses.intents)
+    tools = catalogue.needle_tools
+    rows: list[dict[str, object]] = []
+    raw = json.loads((ROOT / "responses.it.json").read_text(encoding="utf-8"))
+    for intent, entry in raw.items():
+        for phrase in entry["phrases"]:
+            for query in (phrase, f"{phrase}!"):
+                rows.append(example(query, [{"name": "local_smalltalk", "arguments": {"intent": intent}}],
+                                    f"{phrase!r} indica l'intento {intent}", tools))
+    for query in BATTERY:
+        rows.append(example(query, [{"name": "get_battery_level", "arguments": {}}], "La richiesta parla di batteria, carica o autonomia", tools))
+    for location in LOCATIONS:
+        for pattern in ("vai in {}", "vai verso {}", "raggiungi {}", "portati in {}"):
+            rows.append(example(pattern.format(location), [{"name": "navigate_to", "arguments": {"location": location}}], f"{location!r} indica il luogo di destinazione", tools))
+    for name, queries in SIMPLE_TOOLS.items():
+        for query in queries:
+            rows.append(example(query, [{"name": name, "arguments": {}}], f"La richiesta riguarda {name}", tools))
+    for query, level in VOLUME:
+        rows.append(example(query, [{"name": "set_volume", "arguments": {"level": level}}], f"La frase indica il livello di volume {level}", tools))
+    for query in OFF_TOPIC:
+        rows.append(example(query, [], "Nessun tool dichiarato gestisce questa richiesta", tools))
+    target = ROOT / "data" / "sparkie-tools.jsonl"
+    target.write_text("".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n" for row in rows), encoding="utf-8")
+    print(f"Wrote {len(rows)} examples to {target}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

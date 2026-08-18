@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""Augment Sparkie's Needle data through the Gemini OpenAI-compatible API."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parent.parent
+SYSTEM_FACTS = "locale: it-IT; assistant: Sparkie"
+sys.path.insert(0, str(ROOT))
+
+from voice_gateway.local_responses import LocalResponseCatalog  # noqa: E402
+from voice_gateway.policy import _value_errors  # noqa: E402
+from voice_gateway.tool_catalog import ToolCatalog  # noqa: E402
+
+
+GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+
+
+def _key(row: dict[str, Any]) -> tuple[str, str]:
+    return row["query"].strip().casefold(), json.dumps(row["answers"], sort_keys=True)
+
+
+def _valid_row(row: Any, tools: list[dict[str, Any]], responses: LocalResponseCatalog,
+               specs: dict[str, dict[str, Any]]) -> bool:
+    if not isinstance(row, dict) or not isinstance(row.get("query"), str):
+        return False
+    if row.get("tools") != tools or not isinstance(row.get("answers"), list):
+        return False
+    # Gateway accepts one proposal only. Do not train a different contract.
+    if len(row["answers"]) > 1 or not isinstance(row.get("reasoning"), str):
+        return False
+    if not row["answers"]:
+        return True
+    answer = row["answers"][0]
+    if not isinstance(answer, dict) or not isinstance(answer.get("name"), str):
+        return False
+    arguments = answer.get("arguments")
+    spec = specs.get(answer["name"])
+    if spec is None or not isinstance(arguments, dict):
+        return False
+    if _value_errors(arguments, spec["parameters"], "arguments"):
+        return False
+    if answer["name"] == "local_smalltalk":
+        # Local answers are only legal for phrases the deterministic gateway
+        # accepts. Novel wording needs a reviewed response-catalogue change.
+        return responses.matches(row["query"], arguments["intent"])
+    if answer["name"] == "navigate_to":
+        location = arguments["location"].casefold()
+        return location in row["query"].casefold()
+    return True
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input", type=Path, default=ROOT / "data" / "sparkie-tools.jsonl")
+    parser.add_argument("--output", type=Path,
+                        default=ROOT / "data" / "sparkie-tools.gemini.jsonl")
+    parser.add_argument("--num-samples", type=int, default=500)
+    parser.add_argument("--batch-size", type=int, default=25)
+    parser.add_argument("--model", default="gemini-3.5-flash-lite")
+    args = parser.parse_args()
+    if args.num_samples < 1 or args.batch_size < 1:
+        parser.error("sample and batch sizes must be positive")
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        print("error: set GEMINI_API_KEY from Google AI Studio", file=sys.stderr)
+        return 2
+
+    responses = LocalResponseCatalog(ROOT / "responses.it.json")
+    catalogue = ToolCatalog(ROOT / "tools.json", responses.intents)
+    tools = catalogue.needle_tools
+    specs = {tool["name"]: tool for tool in tools}
+    with tempfile.TemporaryDirectory(prefix="sparkie-gemini-") as directory:
+        generated_path = Path(directory) / "generated.jsonl"
+        environment = dict(os.environ)
+        environment["OPENROUTER_API_KEY"] = key
+        environment["OPENROUTER_URL"] = GEMINI_ENDPOINT
+        command = [
+            str(ROOT / "runtime" / "venv" / "bin" / "needle"), "generate-data",
+            "--augment", str(args.input), "--num-samples", str(args.num_samples),
+            "--batch-size", str(args.batch_size), "--workers", "1", "--model", args.model,
+            "--output", str(generated_path),
+        ]
+        subprocess.run(command, check=True, env=environment)
+        rows = [json.loads(line) for line in generated_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()]
+
+    accepted, rejected, seen = [], 0, set()
+    for row in rows:
+        if isinstance(row, dict):
+            # Needle's generator does not retain seed-system facts. Pin the
+            # same facts used by the gateway on every generated turn.
+            row["system"] = SYSTEM_FACTS
+        if not _valid_row(row, tools, responses, specs):
+            rejected += 1
+            continue
+        row_key = _key(row)
+        if row_key not in seen:
+            seen.add(row_key)
+            accepted.append(row)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        "".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n"
+                for row in accepted), encoding="utf-8")
+    print(f"Wrote {len(accepted)} validated examples to {args.output} ({rejected} rejected)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

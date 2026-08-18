@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Try the local Needle tool router with text, without audio or Mind."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import sys
+
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNTIME_PYTHON = ROOT / "runtime" / "venv" / "bin" / "python"
+RUNTIME_VENV = ROOT / "runtime" / "venv"
+
+# Match the production service's interpreter when the project runtime exists.
+# This avoids silently using the macOS/system Python, which has no Needle.
+if RUNTIME_PYTHON.is_file() and Path(sys.prefix).resolve() != RUNTIME_VENV.resolve():
+    os.execv(str(RUNTIME_PYTHON), [str(RUNTIME_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]])
+
+sys.path.insert(0, str(ROOT))
+
+from voice_gateway.backends import NeedleRouter  # noqa: E402
+from voice_gateway.local_responses import LocalResponseCatalog  # noqa: E402
+from voice_gateway.tool_catalog import ToolCatalog  # noqa: E402
+
+
+def _local_verdict(
+    result: dict[str, object], query: str, catalog: ToolCatalog,
+    responses: LocalResponseCatalog,
+) -> dict[str, object] | None:
+    calls = result.get("function_calls", result.get("tool_calls", []))
+    if not isinstance(calls, list) or len(calls) != 1 or not isinstance(calls[0], dict):
+        return None
+    call = calls[0]
+    tool = next((item for item in catalog.local_tools if item["name"] == call.get("name")), None)
+    arguments = call.get("arguments")
+    if tool is None or not isinstance(arguments, dict):
+        return None
+    argument = tool.get("response_intent_argument")
+    intent = (arguments.get(argument) if isinstance(argument, str)
+              else tool.get("local_intent"))
+    if not isinstance(intent, str):
+        return {"accepted": False, "reason": "missing_local_intent"}
+    return {
+        "intent": intent,
+        "phrase_matches": responses.matches(query, intent),
+        "accepted": intent in responses.intents and responses.matches(query, intent),
+    }
+
+
+def _run(query: str, router: NeedleRouter, catalog: ToolCatalog,
+         responses: LocalResponseCatalog) -> None:
+    result = router.complete(query)
+    output: dict[str, object] = {"query": query, "needle": result}
+    verdict = _local_verdict(result, query, catalog, responses)
+    if verdict is not None:
+        output["local_response_validation"] = verdict
+    print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("query", nargs="*", help="Text after the wake word.")
+    parser.add_argument("--tools", type=Path, default=ROOT / "tools.json")
+    parser.add_argument("--responses", type=Path, default=ROOT / "responses.it.json")
+    parser.add_argument("--weights", default="", help="Optional tuned .cact model.")
+    parser.add_argument("--interactive", action="store_true")
+    args = parser.parse_args()
+    if not args.query and not args.interactive:
+        parser.error("provide a query or use --interactive")
+
+    responses = LocalResponseCatalog(args.responses)
+    catalog = ToolCatalog(args.tools, responses.intents)
+    try:
+        router = NeedleRouter(catalog.needle_tools, args.weights)
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        print("Install it in the gateway runtime with:", file=sys.stderr)
+        print("  runtime/venv/bin/python -m pip install cactus-needle", file=sys.stderr)
+        return 2
+    if args.query:
+        _run(" ".join(args.query), router, catalog, responses)
+    while args.interactive:
+        try:
+            query = input("query> ").strip()
+        except EOFError:
+            break
+        if query in {"/quit", "/exit"}:
+            break
+        if query:
+            _run(query, router, catalog, responses)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

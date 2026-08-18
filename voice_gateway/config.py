@@ -42,6 +42,7 @@ class GatewayConfig:
     trim_trailing_ms: int
     trim_minimum_ms: int
     allow_unscored_needle: bool = False
+    needle_system: str = "locale: it-IT; assistant: Sparkie"
 
     @classmethod
     def load(cls, path: Path) -> "GatewayConfig":
@@ -91,6 +92,7 @@ class GatewayConfig:
             trim_trailing_ms=int(source.get("trim_trailing_ms", 150)),
             trim_minimum_ms=int(source.get("trim_minimum_ms", 300)),
             allow_unscored_needle=bool(source.get("allow_unscored_needle", False)),
+            needle_system=str(source.get("needle_system", "locale: it-IT; assistant: Sparkie")),
         )
         config.validate()
         return config

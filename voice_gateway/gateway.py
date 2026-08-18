@@ -31,7 +31,9 @@ class VoiceGateway:
         self.asr = asr or NemoSpeechCuda(str(config.nemo_model_path),
                                         str(config.nemo_library_path), config.language,
                                         config.nemo_gpu, config.nemo_warmup_seconds)
-        self.router = router or NeedleRouter(self.catalog.needle_tools, config.needle_model_path)
+        self.router = router or NeedleRouter(
+            self.catalog.needle_tools, config.needle_model_path, config.needle_system,
+        )
         self.mind = mind or MindClient(config.mind_base_url, config.mind_timeout_seconds,
                                       config.robot_id, config.language,
                                       config.retry_count, config.retry_backoff_seconds)

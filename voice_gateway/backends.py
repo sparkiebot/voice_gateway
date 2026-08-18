@@ -171,7 +171,8 @@ class NemoSpeechCuda:
 
 
 class NeedleRouter:
-    def __init__(self, tools: list[dict[str, Any]], model_path: str = "") -> None:
+    def __init__(self, tools: list[dict[str, Any]], model_path: str = "",
+                 system: str = "") -> None:
         try:
             import needle  # type: ignore
         except ImportError as exc:
@@ -179,6 +180,8 @@ class NeedleRouter:
         kwargs: dict[str, Any] = {"tools": tools}
         if model_path:
             kwargs["weights"] = model_path
+        if system:
+            kwargs["system"] = system
         self.agent = needle.Needle(**kwargs)
 
     def complete(self, transcript: str) -> dict[str, Any]:

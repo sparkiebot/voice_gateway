@@ -1,7 +1,7 @@
 [
   {
     "name": "local_smalltalk",
-    "description": "Classify one harmless Italian small-talk utterance after the wake word. Choose the intent evidenced by the utterance; do not use this for requests, questions needing context, or physical actions.",
+    "description": "Classifica una sola frase di conversazione innocua in italiano, detta dopo la wake word. Scegli esclusivamente l'intento espresso dalla frase. Non usare questo tool per richieste operative, domande che richiedono contesto o azioni fisiche.",
     "gateway_local": true,
     "response_intent_argument": "intent",
     "parameters": {
@@ -9,12 +9,8 @@
       "properties": {
         "intent": {
           "type": "string",
-          "enum": [
-            "greeting", "wellbeing", "thanks", "goodbye", "identity",
-            "capabilities", "compliment_response", "encouragement",
-            "good_morning", "good_evening", "good_night"
-          ],
-          "description": "Exact small-talk intent expressed by the utterance."
+          "enum": ["greeting", "wellbeing", "thanks", "goodbye", "identity", "capabilities", "compliment_response", "encouragement", "good_morning", "good_evening", "good_night"],
+          "description": "Intento di conversazione espresso esattamente dalla frase italiana."
         }
       },
       "required": ["intent"],
@@ -22,18 +18,64 @@
     }
   },
   {
+    "name": "stop_motion",
+    "description": "Propone di fermare immediatamente qualunque movimento del robot. Usalo per fermati, stop, basta o richieste equivalenti.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+  },
+  {
+    "name": "get_robot_status",
+    "description": "Propone di leggere lo stato operativo generale del robot: batteria, ricarica, rete, posizione e stato dei sensori.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+  },
+  {
     "name": "get_battery_level",
-    "description": "Propose reading the robot battery level.",
+    "description": "Propone di leggere il livello di batteria del robot quando l'utente chiede carica, autonomia o stato della batteria.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+  },
+  {
+    "name": "get_navigation_status",
+    "description": "Propone di leggere lo stato della navigazione corrente: destinazione, avanzamento, arrivo o eventuale blocco.",
     "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
   },
   {
     "name": "navigate_to",
-    "description": "Propose navigation to a named safe location.",
+    "description": "Propone di portare il robot in uno dei luoghi sicuri configurati. Estrai il luogo nominato dall'utente.",
     "parameters": {
       "type": "object",
-      "properties": {"location": {"type": "string", "minLength": 1}},
+      "properties": {
+        "location": {
+          "type": "string",
+          "enum": ["cucina", "salotto", "camera da letto", "bagno", "ingresso", "studio", "tavolo", "divano", "porta", "base di ricarica", "corridoio", "giardino", "sala da pranzo", "garage", "terrazzo", "lavanderia", "cameretta", "ripostiglio", "balcone", "scrivania"],
+          "description": "Luogo sicuro configurato come destinazione."
+        }
+      },
       "required": ["location"],
       "additionalProperties": false
     }
+  },
+  {
+    "name": "list_known_destinations",
+    "description": "Propone di elencare i luoghi sicuri configurati in cui il robot può andare.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+  },
+  {
+    "name": "set_volume",
+    "description": "Propone di impostare il volume della voce del robot a un livello espresso dall'utente, da 0 a 100.",
+    "parameters": {
+      "type": "object",
+      "properties": {"level": {"type": "integer", "minimum": 0, "maximum": 100, "description": "Livello del volume da 0 a 100."}},
+      "required": ["level"],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "get_environment_status",
+    "description": "Propone di leggere lo stato dell'ambiente rilevato dai sensori, come temperatura, umidità e ostacoli vicini.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+  },
+  {
+    "name": "follow_me",
+    "description": "Propone di avviare la modalità in cui il robot segue la persona che glielo chiede.",
+    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
   }
 ]

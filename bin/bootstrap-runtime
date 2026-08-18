@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Create the isolated environment used by both the systemd service and
+# bin/test-query. Override PYTHON_BIN when the production Python is not python3.
+readonly project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly python_bin="${PYTHON_BIN:-python3}"
+readonly venv_python="${project_dir}/runtime/venv/bin/python"
+
+if ! command -v "${python_bin}" >/dev/null 2>&1; then
+    echo "Python executable not found: ${python_bin}" >&2
+    exit 1
+fi
+
+if [[ ! -x "${venv_python}" ]]; then
+    "${python_bin}" -m venv "${project_dir}/runtime/venv"
+fi
+
+"${venv_python}" -m pip install --upgrade pip
+"${venv_python}" -m pip install -e "${project_dir}" cactus-needle
+
+echo "Runtime ready: ${venv_python}"
+echo "Try: ${project_dir}/bin/test-query 'come stai'"

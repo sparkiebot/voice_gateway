@@ -28,6 +28,14 @@ Runtime-only files live in the ignored `runtime/` directory. The production
 service needs `venv/`, the Q4 model under
 `models/`, and the NeMo/ggml shared libraries under `lib/`.
 
+Create the Python runtime (including Needle) with:
+
+```bash
+bin/bootstrap-runtime
+```
+
+Set `PYTHON_BIN` if the production Python is not available as `python3`.
+
 ## Development
 
 The gateway itself has no mandatory Python package dependencies. The production
@@ -107,6 +115,40 @@ on context, define a normal tool and let Mind handle the final interaction.
 The wake-word service consumes `Hey Sparkie`; do not add it to tool descriptions,
 phrases, or fine-tuning queries.
 
+### Quick text checks
+
+Use the text-only harness to inspect Needle routing before testing audio. Pass
+only the words after the wake word; it prints Needle's raw proposal and whether
+a local response would be accepted by the same phrase validator as the gateway.
+
+```bash
+bin/test-query "come stai"
+bin/test-query "vai in cucina"
+bin/test-query --interactive
+bin/test-query --weights models/sparkie-tools.cact "quanta batteria rimane"
+```
+
+When `runtime/venv` exists, the script automatically uses the same Python
+environment as the production service. Install Needle there once with
+`runtime/venv/bin/python -m pip install cactus-needle`.
+
+### Augmenting with Gemini
+
+Create a Gemini API key in Google AI Studio, export it only for the command,
+then run the wrapper below. It uses Gemini's OpenAI-compatible endpoint directly
+(not OpenRouter), serializes requests to respect free-tier limits, and rejects
+generated rows that do not satisfy the gateway's schema and local-response
+rules.
+
+```bash
+export GEMINI_API_KEY="..."
+bin/augment-with-gemini --num-samples 500
+```
+
+The validated combined output is `data/sparkie-tools.gemini.jsonl`. Review it
+before training and increase the sample count in batches until the navigation
+argument has thousands of diverse, grounded examples.
+
 ## Needle fine-tuning
 
 Start with the base model: its schema grammar, retrieval (only the best five
@@ -120,6 +162,11 @@ short `reasoning` line that points every argument back to words in the query.
 Include off-topic turns with `"answers": []` and deliberately ambiguous pairs
 for similarly named tools. A few hundred clean examples help tool selection;
 argument grounding generally needs thousands of varied examples.
+
+Build the reviewed starter set for the current catalogue with
+`bin/build-finetune-dataset`. It contains local small talk plus examples for
+every operational tool, safe navigation destinations, and off-topic examples;
+it is written to `data/sparkie-tools.jsonl`.
 
 ```bash
 needle finetune data/sparkie-tools.jsonl --epochs 15 --out checkpoints/sparkie_lora.pkl

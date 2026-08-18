@@ -22,6 +22,7 @@
     "asr_confidence_threshold": 0.7,
     "needle_confidence_threshold": 0.85,
     "allow_unscored_needle": false,
+    "needle_system": "locale: it-IT; assistant: Sparkie",
     "local_conversation_confidence_threshold": 0.75,
     "log_transcripts": false,
     "trim_silence": true,
@@ -30,6 +31,8 @@
     "trim_trailing_ms": 150,
     "trim_minimum_ms": 300,
     "sensitive_tools": [
-        "navigate_to"
+        "stop_motion",
+        "navigate_to",
+        "follow_me"
     ]
 }
