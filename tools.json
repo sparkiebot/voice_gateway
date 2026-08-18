@@ -45,7 +45,7 @@
       "properties": {
         "location": {
           "type": "string",
-          "enum": ["cucina", "salotto", "camera da letto", "bagno", "ingresso", "studio", "tavolo", "divano", "porta", "base di ricarica", "corridoio", "giardino", "sala da pranzo", "garage", "terrazzo", "lavanderia", "cameretta", "ripostiglio", "balcone", "scrivania"],
+          "enum": ["tinello", "camera da letto"],
           "description": "Luogo sicuro configurato come destinazione."
         }
       },

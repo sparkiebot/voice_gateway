@@ -123,7 +123,7 @@ a local response would be accepted by the same phrase validator as the gateway.
 
 ```bash
 bin/test-query "come stai"
-bin/test-query "vai in cucina"
+bin/test-query "vai in tinello"
 bin/test-query --interactive
 bin/test-query --weights models/sparkie-tools.cact "quanta batteria rimane"
 ```

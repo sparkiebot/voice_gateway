@@ -16,12 +16,7 @@ from voice_gateway.local_responses import LocalResponseCatalog  # noqa: E402
 from voice_gateway.tool_catalog import ToolCatalog  # noqa: E402
 
 
-LOCATIONS = (
-    "cucina", "salotto", "camera da letto", "bagno", "ingresso", "studio",
-    "tavolo", "divano", "porta", "base di ricarica", "corridoio", "giardino",
-    "sala da pranzo", "garage", "terrazzo", "lavanderia", "cameretta",
-    "ripostiglio", "balcone", "scrivania",
-)
+LOCATIONS = ("tinello", "camera da letto")
 BATTERY = ("quanta batteria rimane", "quanta batteria hai", "qual è il livello della batteria", "dimmi la batteria", "controlla la batteria", "mi dici quanta carica resta", "quanta carica è rimasta", "hai poca batteria", "la batteria è scarica", "batteria residua", "stato della batteria", "quanto sei carico", "verifica la carica", "leggimi il livello di carica", "qual è la carica residua", "quanta energia ti resta", "sei quasi scarico", "devi ricaricarti", "quanta autonomia hai", "verifica l'autonomia", "quanto dura ancora la batteria", "batteria del robot", "hai bisogno della base di ricarica", "qual è il tuo stato di carica")
 SIMPLE_TOOLS = {
     "stop_motion": ("fermati", "stop", "stop subito", "basta", "basta muoverti", "non muoverti", "arresta il movimento", "ferma il robot", "blocca il movimento", "fermati immediatamente", "stop movimento", "ferma tutto"),
