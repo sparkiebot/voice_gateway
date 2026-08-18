@@ -16,7 +16,12 @@ class LocalResponseCatalog:
         if not isinstance(payload, dict) or not payload:
             raise ValueError("local response catalog must be a non-empty object")
         self._responses: dict[str, tuple[str, ...]] = {}
-        for intent, responses in payload.items():
+        self._phrases: dict[str, frozenset[str]] = {}
+        for intent, item in payload.items():
+            # The object form keeps all routing phrases next to their answers.
+            # A bare response list remains accepted for backward compatibility.
+            responses = item.get("responses") if isinstance(item, dict) else item
+            phrases = item.get("phrases", []) if isinstance(item, dict) else []
             if (
                 not isinstance(intent, str)
                 or not isinstance(responses, list)
@@ -26,6 +31,11 @@ class LocalResponseCatalog:
             ):
                 raise ValueError(f"invalid local response catalog entry: {intent!r}")
             self._responses[intent] = tuple(response.strip() for response in responses)
+            if not isinstance(phrases, list) or any(
+                not isinstance(phrase, str) or not phrase.strip() for phrase in phrases
+            ):
+                raise ValueError(f"invalid local response phrases: {intent!r}")
+            self._phrases[intent] = frozenset(_normalize(phrase) for phrase in phrases)
         self._rng = rng or random.SystemRandom()
         self._last: dict[str, str] = {}
 
@@ -43,28 +53,44 @@ class LocalResponseCatalog:
         self._last[intent] = selected
         return selected
 
+    def matches(self, text: str, intent: str) -> bool:
+        if intent not in self._responses:
+            return False
+        phrases = self._phrases[intent]
+        if phrases:
+            return _normalize(text) in phrases
+        # Legacy catalogues did not carry phrases. Keep them working while new
+        # catalogues use the data-driven form above.
+        return matches_local_intent(text, intent)
 
-_INTENT_PATTERNS = {
-    "greeting": (r"^(ciao|salve|ehi|hey)( sparkie)?$",),
-    "wellbeing": (r"^come (va|stai)( sparkie)?$", r"^tutto bene( sparkie)?$"),
-    "thanks": (r"^(grazie|grazie mille|ti ringrazio)( sparkie)?$",),
-    "goodbye": (r"^(arrivederci|a presto|a dopo|ci vediamo)( sparkie)?$",),
-    "identity": (r"^(chi sei|come ti chiami)( sparkie)?$",),
-    "capabilities": (r"^(cosa|che cosa) (sai|puoi) fare( sparkie)?$",),
+
+_LEGACY_INTENT_PATTERNS = {
+    "greeting": (r"^(ciao|salve|ehi|hey)$",),
+    "wellbeing": (r"^come (va|stai)$", r"^tutto bene$"),
+    "thanks": (r"^(grazie|grazie mille|ti ringrazio)$",),
+    "goodbye": (r"^(arrivederci|a presto|a dopo|ci vediamo)$",),
+    "identity": (r"^(chi sei|come ti chiami)$",),
+    "capabilities": (r"^(cosa|che cosa) (sai|puoi) fare$",),
     "compliment_response": (
-        r"^(sei|quanto sei) (bravo|bravissimo|forte|simpatico)( sparkie)?$",
+        r"^(sei|quanto sei) (bravo|bravissimo|forte|simpatico)$",
     ),
     "encouragement": (
-        r"^(incoraggiami|motivami|dammi coraggio)( sparkie)?$",
+        r"^(incoraggiami|motivami|dammi coraggio)$",
     ),
-    "good_morning": (r"^buongiorno( sparkie)?$",),
-    "good_evening": (r"^buonasera( sparkie)?$",),
-    "good_night": (r"^(buonanotte|buon riposo|notte)( sparkie)?$",),
+    "good_morning": (r"^buongiorno$",),
+    "good_evening": (r"^buonasera$",),
+    "good_night": (r"^(buonanotte|buon riposo|notte)$",),
 }
 
 
-def matches_local_intent(text: str, intent: str) -> bool:
+def _normalize(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text.casefold())
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
     normalized = re.sub(r"[^a-z0-9]+", " ", normalized).strip()
-    return any(re.fullmatch(pattern, normalized) for pattern in _INTENT_PATTERNS.get(intent, ()))
+    return normalized
+
+
+def matches_local_intent(text: str, intent: str) -> bool:
+    """Compatibility helper for users of pre-object response catalogues."""
+    return any(re.fullmatch(pattern, _normalize(text))
+               for pattern in _LEGACY_INTENT_PATTERNS.get(intent, ()))

@@ -60,3 +60,60 @@ phrase against that intent, then selects a random response from
 one intent. Local intent tools are never advertised to Mind or ROS and cannot
 execute physical actions. Unknown, ambiguous, mismatched, or low-confidence
 phrases continue through the normal Mind text fallback.
+
+## Adding tools and local responses
+
+`tools.json` is the canonical tool catalogue. Add a tool there with a unique
+snake_case `name`, a precise Italian description, and an object JSON Schema for
+`parameters`. The robot request may enable a tool by name, but its supplied
+description or schema is ignored: the gateway forwards the canonical catalogue
+entry to Mind and validates Needle proposals against it. This keeps the contract
+reviewable in Git and prevents a caller from broadening a tool at runtime.
+
+Small talk is intentionally one `local_smalltalk` tool, not one tool per
+response. Its enum maps to the intents in the response catalogue. To add a new
+local answer, add an enum value and a matching catalogue entry. The data-driven
+response form below makes its exact accepted utterances and answers live in one
+place (old list-only entries remain supported for migration):
+
+```json
+{
+  "wake_up": {
+    "phrases": ["svegliati", "buongiorno"],
+    "responses": ["Eccomi!", "Buongiorno, sono qui."]
+  }
+}
+```
+
+Use local responses only where an exact utterance is safe and complete. For
+anything with variables, ambiguity, a side effect, or a response that depends
+on context, define a normal tool and let Mind handle the final interaction.
+The wake-word service consumes `Hey Sparkie`; do not add it to tool descriptions,
+phrases, or fine-tuning queries.
+
+## Needle fine-tuning
+
+Start with the base model: its schema grammar, retrieval (only the best five
+tools are reachable in a turn), and confidence gating are normally enough for a
+small catalogue. Fine-tune only after recording an evaluation set that shows a
+repeatable routing or argument-grounding problem.
+
+Needle trains a LoRA adapter from JSONL examples. Each line carries the spoken
+`query`, the tool schema(s) that were available, the expected `answers`, and a
+short `reasoning` line that points every argument back to words in the query.
+Include off-topic turns with `"answers": []` and deliberately ambiguous pairs
+for similarly named tools. A few hundred clean examples help tool selection;
+argument grounding generally needs thousands of varied examples.
+
+```bash
+needle finetune data/sparkie-tools.jsonl --epochs 15 --out checkpoints/sparkie_lora.pkl
+needle build checkpoints/needle2.pkl --lora checkpoints/sparkie_lora.pkl --out models/sparkie-tools.cact
+```
+
+Point `needle_model_path` at the exported `.cact`. Important: Needle’s
+confidence score is calibrated for base weights and is `None` for tuned weights,
+so a tuned deployment must route using a separate explicit acceptance policy
+(for example schema validation plus a conservative allowlist), rather than the
+current confidence threshold alone. The gateway fails closed by default; after
+reviewing the tool allowlist, set `allow_unscored_needle` to `true` in the
+operator configuration to permit these schema-validated but unscored proposals.

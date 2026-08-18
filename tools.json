@@ -1,80 +1,25 @@
 [
   {
-    "name": "smalltalk_greeting",
-    "description": "Italian harmless greeting: ciao, salve, ehi Sparkie, buongiorno, buonasera.",
+    "name": "local_smalltalk",
+    "description": "Classify one harmless Italian small-talk utterance after the wake word. Choose the intent evidenced by the utterance; do not use this for requests, questions needing context, or physical actions.",
     "gateway_local": true,
-    "local_intent": "greeting",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_wellbeing",
-    "description": "Italian social question asking how Sparkie is: come va, come stai, tutto bene.",
-    "gateway_local": true,
-    "local_intent": "wellbeing",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_thanks",
-    "description": "Italian thanks: grazie, grazie mille, ti ringrazio.",
-    "gateway_local": true,
-    "local_intent": "thanks",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_goodbye",
-    "description": "Italian farewell: arrivederci, a presto, a dopo, ci vediamo.",
-    "gateway_local": true,
-    "local_intent": "goodbye",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_identity",
-    "description": "Italian question asking who Sparkie is: chi sei, come ti chiami.",
-    "gateway_local": true,
-    "local_intent": "identity",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_capabilities",
-    "description": "Italian question asking what Sparkie can do: cosa sai fare, cosa puoi fare.",
-    "gateway_local": true,
-    "local_intent": "capabilities",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_compliment",
-    "description": "Italian harmless compliment to Sparkie: sei bravo, sei bravissimo, sei simpatico.",
-    "gateway_local": true,
-    "local_intent": "compliment_response",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_encouragement",
-    "description": "Italian request for encouragement: incoraggiami, motivami, dammi coraggio.",
-    "gateway_local": true,
-    "local_intent": "encouragement",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_good_morning",
-    "description": "Italian morning greeting: buongiorno.",
-    "gateway_local": true,
-    "local_intent": "good_morning",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_good_evening",
-    "description": "Italian evening greeting: buonasera.",
-    "gateway_local": true,
-    "local_intent": "good_evening",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-  },
-  {
-    "name": "smalltalk_good_night",
-    "description": "Italian night farewell: buonanotte, buon riposo, notte Sparkie.",
-    "gateway_local": true,
-    "local_intent": "good_night",
-    "parameters": {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+    "response_intent_argument": "intent",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "greeting", "wellbeing", "thanks", "goodbye", "identity",
+            "capabilities", "compliment_response", "encouragement",
+            "good_morning", "good_evening", "good_night"
+          ],
+          "description": "Exact small-talk intent expressed by the utterance."
+        }
+      },
+      "required": ["intent"],
+      "additionalProperties": false
+    }
   },
   {
     "name": "get_battery_level",

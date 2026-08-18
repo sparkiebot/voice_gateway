@@ -29,7 +29,8 @@ def _value_errors(value: Any, schema: dict[str, Any], path: str) -> list[str]:
 
 def evaluate(asr: dict[str, Any], needle: dict[str, Any], tools: list[dict[str, Any]],
              asr_threshold: float, needle_threshold: float,
-             sensitive: frozenset[str]) -> tuple[str, str, dict[str, Any] | None]:
+             sensitive: frozenset[str], allow_unscored_needle: bool = False
+             ) -> tuple[str, str, dict[str, Any] | None]:
     text = str(asr.get("text", "")).strip()
     if not text:
         return "mind_fallback", "empty_transcript", None
@@ -38,7 +39,10 @@ def evaluate(asr: dict[str, Any], needle: dict[str, Any], tools: list[dict[str, 
         return "mind_fallback", "low_asr_confidence", None
     if not needle.get("success"):
         return "mind_fallback", "needle_failed", None
-    if float(needle.get("confidence", 0.0)) < needle_threshold:
+    confidence = needle.get("confidence")
+    if confidence is None and not allow_unscored_needle:
+        return "mind_fallback", "missing_needle_confidence", None
+    if confidence is not None and float(confidence) < needle_threshold:
         return "mind_fallback", "low_needle_confidence", None
     calls = needle.get("function_calls", needle.get("tool_calls", []))
     if not isinstance(calls, list) or len(calls) != 1 or not isinstance(calls[0], dict):

@@ -41,6 +41,7 @@ class GatewayConfig:
     trim_leading_ms: int
     trim_trailing_ms: int
     trim_minimum_ms: int
+    allow_unscored_needle: bool = False
 
     @classmethod
     def load(cls, path: Path) -> "GatewayConfig":
@@ -89,6 +90,7 @@ class GatewayConfig:
             trim_leading_ms=int(source.get("trim_leading_ms", 100)),
             trim_trailing_ms=int(source.get("trim_trailing_ms", 150)),
             trim_minimum_ms=int(source.get("trim_minimum_ms", 300)),
+            allow_unscored_needle=bool(source.get("allow_unscored_needle", False)),
         )
         config.validate()
         return config

@@ -11,8 +11,9 @@ from .audio import trim_silence, validate_wav
 from .backends import NeedleRouter, NemoSpeechCuda
 from .config import GatewayConfig
 from .mind import MindClient, MindFailure
-from .local_responses import LocalResponseCatalog, matches_local_intent
+from .local_responses import LocalResponseCatalog
 from .policy import evaluate
+from .tool_catalog import ToolCatalog
 
 
 class BusyError(RuntimeError):
@@ -23,21 +24,14 @@ class VoiceGateway:
     def __init__(self, config: GatewayConfig, asr: Any | None = None,
                  router: Any | None = None, mind: Any | None = None) -> None:
         self.config = config
-        tools = json.loads(config.tools_path.read_text(encoding="utf-8"))
-        if not isinstance(tools, list):
-            raise ValueError("tools_path must contain a JSON list")
-        self.tools: list[dict[str, Any]] = tools
-        self.local_tools = [tool for tool in tools if tool.get("gateway_local") is True]
         self.responses = LocalResponseCatalog(config.local_responses_path)
+        self.catalog = ToolCatalog(config.tools_path, self.responses.intents)
+        self.tools = self.catalog.all_tools
+        self.local_tools = self.catalog.local_tools
         self.asr = asr or NemoSpeechCuda(str(config.nemo_model_path),
                                         str(config.nemo_library_path), config.language,
                                         config.nemo_gpu, config.nemo_warmup_seconds)
-        needle_tools = [
-            {key: value for key, value in tool.items()
-             if key not in {"gateway_local", "local_intent"}}
-            for tool in self.tools
-        ]
-        self.router = router or NeedleRouter(needle_tools, config.needle_model_path)
+        self.router = router or NeedleRouter(self.catalog.needle_tools, config.needle_model_path)
         self.mind = mind or MindClient(config.mind_base_url, config.mind_timeout_seconds,
                                       config.robot_id, config.language,
                                       config.retry_count, config.retry_backoff_seconds)
@@ -88,12 +82,7 @@ class VoiceGateway:
     def _process_locked(self, wav_path: Path, request_id: str, context: dict[str, Any],
                         offered_tools: list[dict[str, Any]]) -> dict[str, Any]:
         started = time.perf_counter()
-        permitted_names = {tool.get("name") for tool in self.tools}
-        robot_tools = [
-            tool for tool in offered_tools
-            if tool.get("name") in permitted_names
-            and tool.get("name") not in {item.get("name") for item in self.local_tools}
-        ]
+        robot_tools = self.catalog.offered_tools(offered_tools)
         route_tools = [*robot_tools, *self.local_tools]
         timings: dict[str, float] = {"initialization_ms": self.initialization_ms}
         transcript, proposal, reason = "", None, "local_error"
@@ -154,7 +143,8 @@ class VoiceGateway:
             )
             route, reason, proposal = evaluate(
                 asr_result, needle_result, route_tools, self.config.asr_confidence_threshold,
-                needle_threshold, self.config.sensitive_tools)
+                needle_threshold, self.config.sensitive_tools,
+                self.config.allow_unscored_needle)
             if route == "local_proposal":
                 local_spec = next(
                     (tool for tool in self.local_tools
@@ -162,10 +152,15 @@ class VoiceGateway:
                     None,
                 )
                 if local_spec is not None:
-                    intent = str(local_spec.get("local_intent", ""))
+                    intent_argument = local_spec.get("response_intent_argument")
+                    intent = str(
+                        proposal["arguments"].get(intent_argument, "")
+                        if isinstance(intent_argument, str) and proposal else
+                        local_spec.get("local_intent", "")
+                    )
                     if (
                         intent in self.responses.intents
-                        and matches_local_intent(transcript, intent)
+                        and self.responses.matches(transcript, intent)
                     ):
                         timings["request_total_ms"] = (
                             time.perf_counter() - started

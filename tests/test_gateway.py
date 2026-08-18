@@ -43,18 +43,18 @@ class GatewayTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         root = Path(self.temporary.name)
         self.local_tool = {
-            "name": "smalltalk_wellbeing", "gateway_local": True,
+            "name": "smalltalk_wellbeing", "description": "Answer a harmless wellbeing question.", "gateway_local": True,
             "local_intent": "wellbeing",
             "parameters": {"type": "object", "properties": {},
                            "required": [], "additionalProperties": False}}
-        self.tools = [self.local_tool, {"name": "get_battery_level", "parameters": {
+        self.tools = [self.local_tool, {"name": "get_battery_level", "description": "Read the battery level.", "parameters": {
             "type": "object", "properties": {}, "additionalProperties": False}}]
         tools_path = root / "tools.json"
         tools_path.write_text(json.dumps(self.tools))
         responses_path = root / "responses.json"
         responses_path.write_text(json.dumps({
-            "greeting": ["Ciao uno", "Ciao due"],
-            "wellbeing": ["Bene uno", "Bene due"],
+            "greeting": {"phrases": ["ciao"], "responses": ["Ciao uno", "Ciao due"]},
+            "wellbeing": {"phrases": ["come va"], "responses": ["Bene uno", "Bene due"]},
         }))
         self.wav = root / "request.wav"
         with wave.open(str(self.wav), "wb") as output:
@@ -94,6 +94,26 @@ class GatewayTests(unittest.TestCase):
         self.assertFalse(result["executed"])
         self.assertEqual(mind.calls, [])
 
+    def test_dynamic_smalltalk_intent_is_validated_against_the_phrase(self):
+        self.tools[0] = {
+            "name": "local_smalltalk", "description": "Classify harmless small talk.",
+            "gateway_local": True, "response_intent_argument": "intent",
+            "parameters": {"type": "object", "properties": {
+                "intent": {"type": "string", "enum": ["greeting", "wellbeing"]},
+            }, "required": ["intent"], "additionalProperties": False},
+        }
+        (Path(self.temporary.name) / "tools.json").write_text(json.dumps(self.tools))
+        mind = StubMind()
+        gateway = VoiceGateway(self.config, StubASR(text="come va"), StubNeedle({
+            "success": True, "confidence": .98,
+            "function_calls": [{"name": "local_smalltalk", "arguments": {
+                "intent": "wellbeing",
+            }}],
+        }), mind)
+        result = gateway.process(self.wav, "small-talk-dynamic", "sparkie-01", {}, [])
+        self.assertEqual(result["route"], "local_response")
+        self.assertEqual(mind.calls, [])
+
     def test_transcript_log_is_structured_and_sanitized(self):
         gateway = VoiceGateway(self.config, StubASR(text="ciao\nrobot"),
             StubNeedle({"success": False}), StubMind())
@@ -122,6 +142,24 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(result["route"], "mind_fallback")
         self.assertEqual(result["tool_calls"], [])  # fallback proposals cannot execute
         self.assertEqual(mind.calls[0][0:2], ("quanta batteria rimane", "request-2"))
+
+    def test_offered_tool_schema_cannot_override_canonical_contract(self):
+        mind = StubMind()
+        gateway = VoiceGateway(self.config, StubASR(), StubNeedle({"success": False}), mind)
+        gateway.process(self.wav, "canonical-tools", "sparkie-01", {}, [{
+            "name": "get_battery_level", "description": "untrusted", "parameters": {"type": "string"}
+        }])
+        self.assertEqual(mind.calls[0][3], [self.tools[1]])
+
+    def test_unscored_needle_fails_closed_by_default(self):
+        mind = StubMind()
+        gateway = VoiceGateway(self.config, StubASR(), StubNeedle({
+            "success": True, "confidence": None,
+            "function_calls": [{"name": "get_battery_level", "arguments": {}}],
+        }), mind)
+        result = gateway.process(self.wav, "no-score", "sparkie-01", {}, self.tools)
+        self.assertEqual(result["route"], "mind_fallback")
+        self.assertEqual(result["reason"], "missing_needle_confidence")
 
     def test_asr_copy_is_trimmed_and_mind_receives_transcript(self):
         with wave.open(str(self.wav), "wb") as output:
