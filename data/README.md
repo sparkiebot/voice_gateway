@@ -38,15 +38,20 @@ not answer, and removes case-insensitive duplicates.
 ## Quota-driven augmentation
 
 `distribution.json` declares the exact final count for every tool and for
-`off_topic`. Run a dry report first, then augment only the deficits:
+`off_topic`. First create reviewable generator seeds, then augment only the
+deficits:
 
 ```bash
 bin/augment-by-distribution --dry-run
+bin/augment-by-distribution --prepare-seeds
 export GEMINI_API_KEY="..."
 bin/augment-by-distribution
 ```
 
-The script starts only from `sparkie-tools.jsonl`, generates one class at a
-time, rejects calls outside that class, validates every row against `tools.json`,
-and fails rather than write a file with missing quota. It writes the result to
-`sparkie-tools.augmented.jsonl`; use that file for the fine-tuning run.
+The script starts only from `sparkie-tools.jsonl` and writes a small seed file
+per class in `augmentation-seeds/`. Each callable seed declares only its own
+tool—e.g. the navigation seed exposes only `navigate_to`—so Gemini does not
+choose among unrelated tools. Generated rows are then rehydrated with the full
+catalogue, validated against `tools.json`, and checked against the exact quota.
+`off_topic` retains the full catalogue because it must teach abstention while
+tools are available. The final file is `sparkie-tools.augmented.jsonl`.

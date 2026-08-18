@@ -116,7 +116,20 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     )
 
 
-def generate(seed: list[dict[str, Any]], count: int, model: str, output: Path) -> list[dict[str, Any]]:
+def scoped_seed(row: dict[str, Any], category: str,
+                specs: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Make the generator see only the requested callable tool.
+
+    The final training rows are rehydrated with the complete catalogue below.
+    Off-topic examples deliberately retain all tools: abstention is meaningful
+    only when calls are actually available.
+    """
+    scoped = dict(row)
+    scoped["tools"] = row["tools"] if category == OFF_TOPIC else [specs[category]]
+    return scoped
+
+
+def generate(seed: list[dict[str, Any]], count: int, model: str) -> list[dict[str, Any]]:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise ValueError("imposta GEMINI_API_KEY da Google AI Studio")
@@ -142,8 +155,13 @@ def main() -> int:
     parser.add_argument("--input", type=Path, default=ROOT / "data" / "sparkie-tools.jsonl")
     parser.add_argument("--distribution", type=Path, default=ROOT / "data" / "distribution.json")
     parser.add_argument("--output", type=Path, default=ROOT / "data" / "sparkie-tools.augmented.jsonl")
+    parser.add_argument("--seed-dir", type=Path,
+                        default=ROOT / "data" / "augmentation-seeds",
+                        help="Directory containing the audited per-class generator seeds.")
     parser.add_argument("--model", default="gemini-3.5-flash-lite")
     parser.add_argument("--dry-run", action="store_true", help="Report deficits without calling Gemini.")
+    parser.add_argument("--prepare-seeds", action="store_true",
+                        help="Write per-class generator seeds, then exit without calling Gemini.")
     args = parser.parse_args()
 
     responses = LocalResponseCatalog(ROOT / "responses.it.json")
@@ -173,6 +191,18 @@ def main() -> int:
     if args.dry_run:
         return 0
 
+    # These files make the augmentation prompt reviewable. Each callable class
+    # contains exactly one declared tool, so generation cannot drift into a
+    # different tool merely because it was in the global catalogue.
+    class_seeds: dict[str, list[dict[str, Any]]] = {}
+    for category in targets:
+        class_seeds[category] = [scoped_seed(row, category, specs)
+                                 for row in accepted[category]]
+        write_jsonl(args.seed_dir / f"{category}.jsonl", class_seeds[category])
+    print(f"Wrote per-class seeds to {args.seed_dir}")
+    if args.prepare_seeds:
+        return 0
+
     for category, target in targets.items():
         if category == "local_smalltalk" and len(accepted[category]) < target:
             raise ValueError("local_smalltalk non viene inventato: aggiungi prima frasi approvate a responses.it.json")
@@ -182,9 +212,12 @@ def main() -> int:
             request_count = min(samples_per_round, deficit)
             # The class-only seed biases Needle's generator; filtering below is
             # still mandatory because the model can emit another declared tool.
-            generated = generate(accepted[category], request_count, args.model, args.output)
+            generated = generate(class_seeds[category], request_count, args.model)
             kept = 0
             for row in generated:
+                # Generator output intentionally has the class-specific schema;
+                # train against the full schema advertised by the real gateway.
+                row["tools"] = tools
                 row["system"] = SYSTEM_FACTS
                 if not is_valid(row, tools, responses, specs) or row_class(row) != category:
                     continue

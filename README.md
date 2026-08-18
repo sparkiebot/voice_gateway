@@ -151,7 +151,8 @@ argument has thousands of diverse, grounded examples.
 
 For reproducible class balance, prefer `bin/augment-by-distribution`. Its
 `data/distribution.json` declares the exact final number of rows per tool and
-off-topic class; it generates and validates each deficit separately.
+off-topic class; it builds a reviewable one-tool seed for each callable class,
+then generates and validates each deficit separately.
 
 ## Needle fine-tuning
 
