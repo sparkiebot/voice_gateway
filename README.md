@@ -42,6 +42,22 @@ The default systemd unit assumes this repository is checked out at
 `/home/sparkie/sparkie/voice_gateway`. Paths remain configurable in
 `/etc/sparkie/voice-gateway.json`.
 
+## Updating production
+
+From the production checkout, run:
+
+```bash
+cd /home/sparkie/sparkie/voice_gateway
+./update.sh
+```
+
+The updater refuses dirty, detached, diverged, or non-`main` source states. It
+fast-forwards from `origin/main`, preserves the ignored `runtime/` directory,
+compiles and tests the new source, reinstalls the systemd unit, restarts the
+service, and verifies that authenticated `/health` reports the new Git commit.
+`VOICE_GATEWAY_UPDATE_REMOTE`, `VOICE_GATEWAY_UPDATE_BRANCH`, and
+`VOICE_GATEWAY_SYSTEMD_SERVICE` may override their respective defaults.
+
 Set `log_transcripts` in the operator configuration to emit a structured
 `voice_transcript` journal entry after ASR. It defaults to false because spoken
 content may be sensitive; audio and context are never logged. Each entry also

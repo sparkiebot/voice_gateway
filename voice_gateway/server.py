@@ -15,6 +15,10 @@ from typing import Any
 
 from .config import GatewayConfig
 from .gateway import BusyError, VoiceGateway
+from .version import source_version
+
+
+SOURCE_VERSION = source_version()
 
 
 class GatewayServer(ThreadingHTTPServer):
@@ -37,7 +41,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             self._json(200 if self.server.gateway.ready else 503,
                        {"ready": self.server.gateway.ready,
-                        "service": "voice_gateway"})
+                        "service": "voice_gateway",
+                        "version": SOURCE_VERSION})
 
     def do_POST(self) -> None:
         if self.path != "/v1/voice-requests":
@@ -119,7 +124,7 @@ def _json_field(fields: dict[str, str], name: str, expected: type) -> Any:
     return value
 
 
-def _notify_ready() -> None:
+def _notify_ready(version: str) -> None:
     address = os.environ.get("NOTIFY_SOCKET")
     if not address:
         return
@@ -127,7 +132,9 @@ def _notify_ready() -> None:
         address = "\0" + address[1:]
     with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
         channel.connect(address)
-        channel.sendall(b"READY=1\nSTATUS=CUDA ASR and Needle are warm")
+        channel.sendall(
+            f"READY=1\nSTATUS=CUDA ASR and Needle are warm ({version})".encode()
+        )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -137,7 +144,9 @@ def main(argv: list[str] | None = None) -> None:
     config = GatewayConfig.load(args.config)
     gateway = VoiceGateway(config)
     server = GatewayServer((config.bind_address, config.port), gateway)
-    _notify_ready()
+    print(json.dumps({"event": "gateway_started", "version": SOURCE_VERSION},
+                     separators=(",", ":")))
+    _notify_ready(SOURCE_VERSION)
     try:
         server.serve_forever()
     finally:
